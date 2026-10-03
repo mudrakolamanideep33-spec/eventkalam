@@ -336,13 +336,65 @@ document.addEventListener('click',function(){$('acm').classList.remove('on')});
 $('mout2').onclick=function(){$('mout').onclick()};
 
 // Remember accounts, login and registrations on this device so a page reload does not wipe them
-function seedAdmin(){if(!MEM.some(function(m){return m.role=='admin'}))MEM.unshift({n:'Admin',e:'admin@eventkalam.demo',p:'-',w:'Kalam@2026',role:'admin',j:'2026-09-01'})}
-seedAdmin();
+function seedAdmin(){}
 var KEY='eventkalam-v2';
-function saveState(){try{localStorage.setItem(KEY,JSON.stringify({EV:EV,MEM:MEM,REG:REG,MEMBERS:MEMBERS,uid:uid,cu:cu?cu.e:null,PAST:PAST.map(function(p){return{id:p.id,t:p.t,d:p.d,m:[]}})}))}catch(e){}}
-try{var d=JSON.parse(localStorage.getItem(KEY)||'null');if(d){EV=d.EV;MEM=d.MEM;seedAdmin();REG=d.REG;MEMBERS=d.MEMBERS;uid=d.uid;PAST=d.PAST;cu=d.cu?MEM.find(function(m){return m.e==d.cu})||null:null;admin=!!(cu&&cu.role=='admin');navMe()}}catch(e){}
+function saveState(){return;try{localStorage.setItem(KEY,JSON.stringify({EV:EV,MEM:MEM,REG:REG,MEMBERS:MEMBERS,uid:uid,cu:cu?cu.e:null,PAST:PAST.map(function(p){return{id:p.id,t:p.t,d:p.d,m:[]}})}))}catch(e){}}
+try{var d=null;if(d){EV=d.EV;MEM=d.MEM;seedAdmin();REG=d.REG;MEMBERS=d.MEMBERS;uid=d.uid;PAST=d.PAST;cu=d.cu?MEM.find(function(m){return m.e==d.cu})||null:null;admin=!!(cu&&cu.role=='admin');navMe()}}catch(e){}
 setInterval(saveState,800);addEventListener('pagehide',saveState);document.addEventListener('visibilitychange',saveState);
 addEventListener('hashchange',route);render();route();
+</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+var SBURL='https://rtihgkshnnulzgkrekcr.supabase.co',SBKEY='sb_publishable_wyAagMeu4nztNm92SGPBFw_tACji1Jf';
+var SB=supabase.createClient(SBURL,SBKEY);
+function ok(r){if(r.error){toast(r.error.message);throw r.error}return r.data}
+function cap(s){return s.charAt(0).toUpperCase()+s.slice(1)}
+async function reload(){
+var evs=ok(await SB.from('events').select('*').order('event_date')),media=ok(await SB.from('event_media').select('*').order('created_at'));
+var regs=cu?ok(await SB.from('registrations').select('id,user_id,status,ticket_code,created_at,events(title),profiles(full_name,phone,email)').order('created_at',{ascending:false})):[];
+var taken={};regs.forEach(function(r){if(r.status!='cancelled'){var t=r.events&&r.events.title;taken[t]=(taken[t]||0)+1}});
+EV=evs.filter(function(e){return e.status=='draft'||e.status=='published'}).map(function(e){return{id:e.id,t:e.title,d:e.event_date,ts:e.start_time.slice(0,5),te:e.end_time.slice(0,5),v:e.venue,s:e.description||'',fee:e.fee_inr,seats:admin?e.capacity:0,taken:taken[e.title]||0,st:cap(e.status)}});
+PAST=evs.filter(function(e){return e.status=='completed'}).reverse().map(function(e){return{id:e.id,t:e.title,d:e.event_date,m:media.filter(function(z){return z.event_id==e.id}).map(function(z){return{i:z.id,u:z.url,v:z.kind=='video'}})}});
+REG=regs.map(function(r){var p=r.profiles||{};return{id:r.ticket_code,rid:r.id,m:p.full_name||'-',e:p.email||(cu&&r.user_id==cu.id?cu.e:'-'),p:p.phone||'-',ev:r.events?r.events.title:'-',st:cap(r.status),d:r.created_at.slice(0,10)}});
+MEM=[];if(admin){MEM=ok(await SB.from('profiles').select('*').eq('role','member').order('created_at',{ascending:false})).map(function(p){return{n:p.full_name,e:p.email||'-',p:p.phone,c:p.college,y:p.city,j:p.created_at.slice(0,10)}});MEMBERS=MEM.length}
+else{try{MEMBERS=(await SB.rpc('member_count')).data||0}catch(e){}}
+render();if(cu&&$('mlist'))mine();if((location.hash||'#home')=='#home')counts()}
+async function afterAuth(){
+var u=(await SB.auth.getSession()).data.session;cu=null;admin=false;
+if(u){u=u.user;var p=(await SB.from('profiles').select('*').eq('id',u.id).single()).data;if(p){cu={id:u.id,n:p.full_name||u.email,e:u.email,p:p.phone,c:p.college,y:p.city,role:p.role,j:p.created_at.slice(0,10)};admin=p.role=='admin'}}
+navMe();try{await reload()}catch(e){}}
+quickReg=async function(x){if(!cu){jn('Create a free account first. You only do this once.');location.hash='#join';return}
+if(admin){toast('You are logged in as admin. Use a member account to register.');return}
+try{ok(await SB.rpc('register_for_event',{p_event:x.id}));boom();toast(x.fee?'Seat held. Payments are paused, so we confirm once they open.':'You are in, '+cu.n.split(' ')[0]+'.');await reload()}catch(e){}};
+$('sf').onsubmit=async function(e){e.preventDefault();var r=await SB.auth.signUp({email:$('se').value.trim().toLowerCase(),password:$('sw').value,options:{data:{full_name:$('sn').value.trim(),phone:$('sp').value,college:$('sc').value,city:$('sy').value}}});
+if(r.error){jn(r.error.message);return}if(!r.data.session){jn('Account created. Check your email to confirm it, then log in.');return}
+await afterAuth();location.hash='#events';route();boom();toast('Welcome, '+cu.n.split(' ')[0]+'.')};
+$('lf2').onsubmit=async function(e){e.preventDefault();var r=await SB.auth.signInWithPassword({email:$('le').value.trim().toLowerCase(),password:$('lw').value});
+if(r.error){jn('Wrong email or password.');return}await afterAuth();location.hash=admin?'#admin':'#events';route();toast(admin?'Welcome back, admin':'Welcome back, '+cu.n.split(' ')[0])};
+$('mout').onclick=async function(){await SB.auth.signOut();cu=null;admin=false;navMe();location.hash='#home';await reload();route();toast('Logged out')};
+$('subb').onclick=function(){toast('Email alerts are coming soon')};
+document.addEventListener('click',async function(e){var t=e.target,a,x;
+function mine1(s){return(a=t.closest(s))}
+if(mine1('[data-ed]')){e.stopImmediatePropagation();editId=a.dataset.ed;showF=1;adminRender();scrollTo(0,0);return}
+var k=['pub','del','fin','chv','cancel'].filter(function(n){return t.closest('[data-'+n+']')})[0];if(!k)return;
+e.stopImmediatePropagation();a=t.closest('[data-'+k+']');var id=a.dataset[k];
+try{if(k=='cancel'){x=REG.find(function(z){return z.id==id});ok(await SB.rpc('cancel_registration',{p_reg:x.rid}));toast('Registration cancelled')}
+else{x=EV.find(function(z){return z.id==id});
+if(k=='pub'){ok(await SB.from('events').update({status:x.st=='Draft'?'published':'draft'}).eq('id',id));toast(x.st=='Draft'?'Published':'Moved to draft')}
+if(k=='del'){ok(await SB.from('events').delete().eq('id',id));toast('Event deleted')}
+if(k=='fin'){ok(await SB.from('events').update({status:'completed'}).eq('id',id));toast('Moved to the showcase. Add photos in Media.')}
+if(k=='chv'){var nv=$('v'+id).value;if(!nv||nv==x.v)return;ok(await SB.from('events').update({venue:nv}).eq('id',id));toast('Venue updated')}}
+await reload()}catch(err){}},true);
+document.addEventListener('submit',async function(e){if(e.target.id!='nf2')return;e.preventDefault();e.stopImmediatePropagation();
+if($('net').value<=$('nst').value){toast('End time must be after the start time');return}
+var row={title:$('nt').value,event_date:$('nd').value,start_time:$('nst').value,end_time:$('net').value,venue:$('nv').value,fee_inr:+$('nfee').value||0,capacity:+$('nse').value||30};
+try{if(editId){ok(await SB.from('events').update(row).eq('id',editId));toast('Changes saved')}else{row.description='Details coming soon.';ok(await SB.from('events').insert(row));toast('Saved as draft. Press Publish to show it on the site.')}
+showF=0;editId=0;await reload()}catch(err){}},true);
+document.addEventListener('change',async function(e){var f=e.target;if(!(f.dataset&&f.dataset.up&&f.files[0]))return;e.stopImmediatePropagation();
+var file=f.files[0],path=f.dataset.up+'/'+Date.now()+'-'+file.name.replace(/[^\w.]/g,'_');toast('Uploading...');
+try{ok(await SB.storage.from('event-media').upload(path,file));var url=SB.storage.from('event-media').getPublicUrl(path).data.publicUrl;
+ok(await SB.from('event_media').insert({event_id:f.dataset.up,url:url,kind:file.type.indexOf('video')==0?'video':'photo'}));toast('Added to the showcase');await reload()}catch(err){}},true);
+EV=[];PAST=[];REG=[];MEM=[];afterAuth().then(route);
 </script>
 </body>
 </html>
