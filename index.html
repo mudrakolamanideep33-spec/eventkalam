@@ -137,7 +137,7 @@ footer h3{color:#fff}footer a{color:#dcefeb}
 <body>
 <div class="top"><div class="bar">
 <div class="top1"><a class="brand" href="#home">Eventkalam</a><div class="acct"><button class="btn sm" id="meL" type="button">Sign up</button><div class="menu" id="acm"><a href="#mine">My events</a><button id="mout2" type="button">Log out</button></div></div></div>
-<nav id="nav"><a href="#home">Home</a><a href="#events">Events</a><a href="#showcase">Showcase</a><a href="#about">About</a><a href="#contact">Contact</a></nav>
+<nav id="nav"><a href="#home">Home</a><a href="#events">Events</a><a href="#showcase">Showcase</a><a href="#about">About</a><a href="#contact">Contact</a><a href="#admin" id="adm" style="display:none">Dashboard</a><a href="#mine" id="mynav" style="display:none">My registrations</a></nav>
 </div></div>
 
 <section class="page" id="home"><div class="wrap pad" style="padding-top:24px">
@@ -197,7 +197,7 @@ footer h3{color:#fff}footer a{color:#dcefeb}
 <input id="sn" placeholder="Full name" required autocomplete="name"><input id="se" type="email" placeholder="Email" required autocomplete="email"><input id="sp" type="tel" placeholder="Phone number" required pattern="[0-9 +]{10,14}" autocomplete="tel"><input id="sc" placeholder="College or company"><input id="sy" placeholder="City"><input id="sw" type="password" minlength="6" placeholder="Password (6+ characters)" required autocomplete="new-password"><button class="btn dk" type="submit">Create account</button></form>
 <form id="lf2" style="display:none;gap:10px"><h2>Welcome back</h2><input id="le" type="email" placeholder="Email" required><input id="lw" type="password" placeholder="Password" required><button class="btn dk" type="submit">Log in</button></form>
 </div></div></section>
-<section class="page" id="mine"><div class="wrap pad"><div class="row" style="justify-content:space-between;margin:0"><h2 style="margin:0">My events</h2><button class="btn sm ghost" id="mout">Log out</button></div><div id="mlist" class="grid"></div></div></section>
+<section class="page" id="mine"><div class="wrap pad"><div class="row" style="justify-content:space-between;margin:0"><h2 style="margin:0">My registrations</h2><button class="btn sm ghost" id="mout">Log out</button></div><div id="mlist" class="grid"></div></div></section>
 <section class="page" id="login"><div class="wrap"><form class="login" id="lf">
 <h2>Admin login</h2>
 <label>Email<input id="em" type="email" autocomplete="username" required></label>
@@ -312,7 +312,7 @@ $('subb').onclick=function(){var v=$('sub').value;if(v.indexOf('@')<1){toast('En
 addEventListener('scroll',function(){var h=document.documentElement,p=scrollY/Math.max(1,h.scrollHeight-innerHeight);$('prog').style.width=(p*100)+'%';$('up').style.display=scrollY>500?'block':'none'},{passive:true});
 
 var cu=null;
-function navMe(){var a=cu&&cu.role=='admin';$('meL').textContent=cu?'Hi, '+cu.n.split(' ')[0]+' ▾':'Sign up';var l=$('acm').firstChild;l.href=a?'#admin':'#mine';l.textContent=a?'Home':'My events';$('acm').classList.remove('on')}
+function navMe(){var a=cu&&cu.role=='admin';$('meL').textContent=cu?'Hi, '+cu.n.split(' ')[0]+' ▾':'Sign up';var l=$('acm').firstChild;l.href=a?'#admin':'#mine';l.textContent=a?'Dashboard':'My registrations';$('adm').style.display=a?'':'none';$('mynav').style.display=(cu&&!a)?'':'none';$('acm').classList.remove('on')}
 function jn(m){var e=$('jn');e.textContent=m;e.style.display='block'}
 function quickReg(x){if(cu&&cu.role=='admin'){toast('You are logged in as admin. Use a member account to register.');return}
 if(!cu){jn('Create a free account first. You only do this once.');location.hash='#join';return}
