@@ -69,6 +69,7 @@ section.page{display:none}section.page.on{display:block;animation:in .45s ease}
 footer .cols{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))!important}
 .av.ph{width:92px;height:92px;overflow:hidden;background:var(--card);border:3px solid var(--sun)}.av.ph img{width:100%;height:100%;object-fit:cover}
 .top1{display:flex;align-items:center;justify-content:space-between;gap:14px}.acct{position:relative}
+@media(min-width:701px){.top1{display:contents}.brand{order:0}nav{order:1;margin-left:auto}.acct{order:2}}
 .acct .btn{box-shadow:none;border-radius:99px;padding:8px 18px}
 .menu{display:none;position:absolute;right:0;top:115%;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:6px;min-width:160px;z-index:40;box-shadow:0 12px 24px rgba(0,0,0,.35)}.menu.on{display:grid}
 .menu a,.menu button{padding:9px 12px;text-align:left;background:none;border:0;color:var(--ink);cursor:pointer;text-decoration:none;border-radius:8px;font-size:.95rem}.menu a:hover,.menu button:hover{background:var(--line)}
@@ -137,7 +138,7 @@ footer h3{color:#fff}footer a{color:#dcefeb}
 <body>
 <div class="top"><div class="bar">
 <div class="top1"><a class="brand" href="#home">Eventkalam</a><div class="acct"><button class="btn sm" id="meL" type="button">Sign up</button><div class="menu" id="acm"><a href="#mine">My events</a><button id="mout2" type="button">Log out</button></div></div></div>
-<nav id="nav"><a href="#home">Home</a><a href="#events">Events</a><a href="#showcase">Showcase</a><a href="#about">About</a><a href="#contact">Contact</a><a href="#admin" id="adm" style="display:none">Dashboard</a><a href="#mine" id="mynav" style="display:none">My registrations</a></nav>
+<nav id="nav"><a href="#home">Home</a><a href="#events">Events</a><a href="#showcase">Showcase</a><a href="#about">About</a><a href="#contact">Contact</a></nav>
 </div></div>
 
 <section class="page" id="home"><div class="wrap pad" style="padding-top:24px">
@@ -233,7 +234,7 @@ footer h3{color:#fff}footer a{color:#dcefeb}
 // Data is saved in the visitor's browser for now. Real version = Supabase tables + Supabase Auth.
 var PAYMENTS_ON=false,MEMBERS=0,admin=false,filt='all',uid=10;
 var EV=[];
-var PAST=[{id:101,t:"Kode-Z 2020",d:"2020-12-12",m:[]},{id:102,t:"21C Lab Launch",d:"2021-03-05",m:[]},{id:103,t:"STEM Robotics Camp",d:"2025-05-20",m:[]}];
+var PAST=[];
 var $=function(i){return document.getElementById(i)};
 function ft(t){if(!t)return'';var p=t.split(':'),h=+p[0];return(h%12||12)+':'+p[1]+(h<12?' AM':' PM')}
 function fd(s){return new Date(s+"T00:00:00").toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"})}
@@ -312,7 +313,7 @@ $('subb').onclick=function(){var v=$('sub').value;if(v.indexOf('@')<1){toast('En
 addEventListener('scroll',function(){var h=document.documentElement,p=scrollY/Math.max(1,h.scrollHeight-innerHeight);$('prog').style.width=(p*100)+'%';$('up').style.display=scrollY>500?'block':'none'},{passive:true});
 
 var cu=null;
-function navMe(){var a=cu&&cu.role=='admin';$('meL').textContent=cu?'Hi, '+cu.n.split(' ')[0]+' ▾':'Sign up';var l=$('acm').firstChild;l.href=a?'#admin':'#mine';l.textContent=a?'Dashboard':'My registrations';$('adm').style.display=a?'':'none';$('mynav').style.display=(cu&&!a)?'':'none';$('acm').classList.remove('on')}
+function navMe(){var a=cu&&cu.role=='admin';$('meL').textContent=cu?'Hi, '+cu.n.split(' ')[0]+' ▾':'Log in / Sign up';var l=$('acm').firstChild;l.href=a?'#admin':'#mine';l.textContent=a?'Dashboard':'My registrations';var o=$('navx');if(o)o.remove();if(cu){var n=document.createElement('a');n.id='navx';n.href=a?'#admin':'#mine';n.textContent=a?'Dashboard':'My registrations';var nv=$('nav');nv.insertBefore(n,nv.children[1]);n.classList.toggle('on',(location.hash||'#home')==n.getAttribute('href'))}$('acm').classList.remove('on')}
 function jn(m){var e=$('jn');e.textContent=m;e.style.display='block'}
 function quickReg(x){if(cu&&cu.role=='admin'){toast('You are logged in as admin. Use a member account to register.');return}
 if(!cu){jn('Create a free account first. You only do this once.');location.hash='#join';return}
@@ -344,6 +345,8 @@ setInterval(saveState,800);addEventListener('pagehide',saveState);document.addEv
 addEventListener('hashchange',route);render();route();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>if(!window.supabase){document.write('<script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js"><\/script>')}</script>
+<script>if(!window.supabase){var offl=function(e){e.preventDefault();jn('Cannot reach the server. Check your internet connection and refresh the page.')};$('sf').onsubmit=offl;$('lf2').onsubmit=offl}</script>
 <script>
 var SBURL='https://rtihgkshnnulzgkrekcr.supabase.co',SBKEY='sb_publishable_wyAagMeu4nztNm92SGPBFw_tACji1Jf';
 var SB=supabase.createClient(SBURL,SBKEY);
