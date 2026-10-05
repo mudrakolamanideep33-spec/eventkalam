@@ -2,13 +2,13 @@ import express from 'express';
 import cors from 'cors';
 import cron from 'node-cron';
 import { createClient } from '@supabase/supabase-js';
-import { Resend } from 'resend';
+import nodemailer from 'nodemailer';
 
-const { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, RESEND_API_KEY, MAIL_FROM, SITE_URL, ALLOWED_ORIGIN, PORT = 3000 } = process.env;
+const { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, SMTP_HOST = 'smtp-relay.brevo.com', SMTP_PORT = '2525', SMTP_USER, SMTP_PASS, MAIL_FROM, SITE_URL, ALLOWED_ORIGIN, PORT = 3000 } = process.env;
 const db = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-const resend = new Resend(RESEND_API_KEY);
+const mailer = nodemailer.createTransport({ host: SMTP_HOST, port: +SMTP_PORT, secure: false, auth: { user: SMTP_USER, pass: SMTP_PASS } });
 const app = express();
-app.use(cors({ origin: ALLOWED_ORIGIN }));
+app.use(cors({ origin: (ALLOWED_ORIGIN || '').split(',').map(x => x.trim()).filter(Boolean) }));
 app.use(express.json());
 
 const fmtDate = d => new Date(d + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -24,10 +24,11 @@ function page(title, intro, ev) {
 }
 
 async function send(emails, subject, html) {
-  for (let i = 0; i < emails.length; i += 50) {
-    const batch = emails.slice(i, i + 50).map(to => ({ from: MAIL_FROM, to, subject, html }));
-    const { error } = await resend.batch.send(batch);
-    if (error) console.error('mail error', error);
+  // one email per person so addresses are never shared; small pause keeps us under free-plan limits
+  for (const to of emails) {
+    try { await mailer.sendMail({ from: MAIL_FROM, to, subject, html }); }
+    catch (e) { console.error('mail error', to, e.message); }
+    await new Promise(r => setTimeout(r, 150));
   }
 }
 
@@ -68,8 +69,8 @@ app.post('/api/events/:id/announce', adminOnly, async (req, res) => {
   const ev = await getEvent(req.params.id);
   if (!ev) return res.status(404).json({ error: 'Event not found' });
   const emails = await allMemberEmails();
-  await send(emails, `New event: ${ev.title}`, page('A new event is up', 'Seats are open. Registering takes one tap.', ev));
-  res.json({ sent: emails.length });
+  res.json({ sending: emails.length });
+  send(emails, `New event: ${ev.title}`, page('A new event is up', 'Seats are open. Registering takes one tap.', ev));
 });
 
 // Admin changes venue, date or time: people registered get an email
@@ -78,8 +79,8 @@ app.post('/api/events/:id/changed', adminOnly, async (req, res) => {
   if (!ev) return res.status(404).json({ error: 'Event not found' });
   const what = (req.body.changes || ['details']).join(', ');
   const emails = await registrantEmails(ev.id);
-  await send(emails, `Update: ${ev.title}`, page(`The ${what} changed`, 'Please check the new details below.', ev));
-  res.json({ sent: emails.length });
+  res.json({ sending: emails.length });
+  send(emails, `Update: ${ev.title}`, page(`The ${what} changed`, 'Please check the new details below.', ev));
 });
 
 // Hourly: remind registered people about events starting in about 24 hours
