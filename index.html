@@ -239,6 +239,8 @@ var PAYMENTS_ON=false,MEMBERS=0,admin=false,filt='all',uid=10;
 var EV=[];
 var PAST=[];
 var $=function(i){return document.getElementById(i)};
+var SERVER='https://eventkalam-server-o5pg.onrender.com';
+async function notifySrv(path,body){try{var ss=await SB.auth.getSession(),t=ss.data.session.access_token;toast('Sending emails...');var r=await fetch(SERVER+path,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+t},body:JSON.stringify(body||{})}),j=await r.json();toast(r.ok?'Emails are on the way to '+j.sending+' people':(j.error||'Email server error'))}catch(e){toast('Saved, but the email server did not answer. It may be waking up, try again in a minute.')}}
 function hx(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
 function shotH(m){return '<div class="shot" data-open="'+m.i+'">'+(m.v?'<video src="'+m.u+'" muted></video>':'<img src="'+m.u+'" alt="'+hx(m.c)+'">')+(m.c?'<span class="cap">'+hx(m.c)+'</span>':'')+'</div>'}
 function endedEv(x){return !!x.te&&new Date(x.d+'T'+x.te+':00+05:30')<new Date()}
@@ -391,7 +393,7 @@ var k=['pub','del','fin','chv','cancel'].filter(function(n){return t.closest('[d
 e.stopImmediatePropagation();a=t.closest('[data-'+k+']');var id=a.dataset[k];
 try{if(k=='cancel'){x=REG.find(function(z){return z.id==id});ok(await SB.rpc('cancel_registration',{p_reg:x.rid}));toast('Registration cancelled')}
 else{x=EV.find(function(z){return z.id==id});
-if(k=='pub'){ok(await SB.from('events').update({status:x.st=='Draft'?'published':'draft'}).eq('id',id));toast(x.st=='Draft'?'Published':'Moved to draft')}
+if(k=='pub'){ok(await SB.from('events').update({status:x.st=='Draft'?'published':'draft'}).eq('id',id));toast(x.st=='Draft'?'Published':'Moved to draft');if(x.st=='Draft')notifySrv('/api/events/'+id+'/announce')}
 if(k=='del'){ok(await SB.from('events').delete().eq('id',id));toast('Event deleted')}
 if(k=='fin'){ok(await SB.from('events').update({status:'completed'}).eq('id',id));toast('Moved to the showcase. Add photos in Media.')}
 if(k=='chv'){var nv=$('v'+id).value;if(!nv||nv==x.v)return;ok(await SB.from('events').update({venue:nv}).eq('id',id));toast('Venue updated')}}
@@ -400,7 +402,7 @@ document.addEventListener('submit',async function(e){if(e.target.id!='nf2')retur
 if($('net').value<=$('nst').value){toast('End time must be after the start time');return}
 var row={title:$('nt').value,event_date:$('nd').value,start_time:$('nst').value,end_time:$('net').value,venue:$('nv').value,fee_inr:+$('nfee').value||0,capacity:+$('nse').value||30};
 var pf=$('nimg')&&$('nimg').files[0];if(pf){try{toast('Uploading photo...');var blob=await shrinkImg(pf),ipath='events/'+Date.now()+'.jpg';ok(await SB.storage.from('event-media').upload(ipath,blob,{contentType:'image/jpeg'}));row.image_url=SB.storage.from('event-media').getPublicUrl(ipath).data.publicUrl}catch(err){toast('Photo upload failed. Check the event-media bucket policy.');return}}
-try{if(editId){ok(await SB.from('events').update(row).eq('id',editId));toast('Changes saved')}else{row.description='Details coming soon.';ok(await SB.from('events').insert(row));toast('Saved as draft. Press Publish to show it on the site.')}
+try{if(editId){var old=EV.find(function(y){return y.id==editId}),ch=[];if(old){if(old.d!=row.event_date)ch.push('date');if(old.ts!=row.start_time||old.te!=row.end_time)ch.push('time');if(old.v!=row.venue)ch.push('venue')}ok(await SB.from('events').update(row).eq('id',editId));toast('Changes saved');if(old&&old.st=='Published'&&ch.length)notifySrv('/api/events/'+editId+'/changed',{changes:ch})}else{row.description='Details coming soon.';ok(await SB.from('events').insert(row));toast('Saved as draft. Press Publish to show it on the site.')}
 showF=0;editId=0;await reload()}catch(err){}},true);
 document.addEventListener('click',async function(e){var b=e.target.closest&&e.target.closest('[data-mup],[data-mdel]');if(!b)return;e.stopImmediatePropagation();
 if(b.dataset.mdel){try{ok(await SB.from('event_media').delete().eq('id',b.dataset.mdel));toast('Removed');await reload()}catch(err){}return}
